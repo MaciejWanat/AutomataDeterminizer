@@ -8,6 +8,7 @@ automaton = {}
 acceptStates = []
 alphabet = set()
 foundState = True
+nonDetWalks = set()
 
 def prettyPrint(dicto):
     print()
@@ -29,11 +30,15 @@ for line in sys.stdin:
 			alphabet.add(words[2])
 			if pair in automaton:
 				automaton[pair].add(words[1])
+				#used for detecting not needed single states
+				nonDetWalks.add(int(words[0]))
 			else:
 				automaton[pair] = set(words[1])
 		else:
 			acceptStates.append(line.strip())
 
+
+maxDet = min(nonDetWalks)
 determineAutomaton = dict(automaton)
 i = 0
 #Determine into multistates----
@@ -52,7 +57,6 @@ while foundState == True:
     for key in automaton:
         #check if it is a multistate (can get more than one state), and if it is
         if len(automaton[key]) > 1 and (frozenset(automaton[key]), key[-1]) not in automaton:
-
             print('Found multistate : ' + str(automaton[key]) + ". Adding to automaton...")
             foundState = True
             #for each symbol in alphabet...
@@ -67,20 +71,25 @@ while foundState == True:
                 keyAutoma = (frozenset(automaton[key]), symbol)
                 determineAutomaton[keyAutoma] = valueAutoma
 
+
 #Delete no longer needed single states
 for key in automaton:
-    if type(key[0]) is str and key[0] != '0':
-        del determineAutomaton[key]
+	if isinstance(key[0], str) and len(determineAutomaton[key]) == 1 and int(key[0]) > maxDet:
+		del determineAutomaton[key]
 
 automaton = determineAutomaton
-#Multistates into determine values
-#Set int value for every state and map it
+orderedSingleAutomaton = {}
 
 #Create map
+i = 0
 keysMap = {}
-#Map multistates and 0 to 0
-keysMap['0'] = '0'
-i = 1
+
+#Map single states
+while i <= maxDet:
+	keysMap[str(i)] = str(i)
+	i = i + 1
+
+#Map multistates
 for key in determineAutomaton:
     if key[0] not in keysMap:
         keysMap[key[0]] = str(i)
@@ -101,5 +110,5 @@ for key in automaton:
             singleElement = e
         determineAutomaton[(keysMap[key[0]], key[1])] = keysMap[singleElement]
 
-print("Final automaton:")
+print("Final determine automaton:")
 prettyPrintOrdered(determineAutomaton)
