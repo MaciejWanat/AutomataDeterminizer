@@ -5,7 +5,8 @@ import collections
 
 determineAutomaton = {}
 automaton = {}
-acceptStates = []
+acceptStates = set()
+detAcceptStates = set()
 alphabet = set()
 foundState = True
 nonDetWalks = set()
@@ -15,11 +16,13 @@ def prettyPrint(dicto):
     for key in dicto:
         print(str(key) + " : " + str(dicto[key]))
 
-def prettyPrintOrdered(dicto):
+def prettyPrintOrdered(dicto, acceptStates):
     print()
     dicto = collections.OrderedDict(sorted(dicto.items()))
     for key in dicto:
-        print(str(key) + " : " + str(dicto[key]))
+        print(str(key[0]) + " " + str(dicto[key]) + " " + str(key[1]))
+    for state in acceptStates:
+    	print(state)
 
 #Read nondeterministic automaton ----
 for line in sys.stdin:
@@ -35,9 +38,10 @@ for line in sys.stdin:
 			else:
 				automaton[pair] = set(words[1])
 		else:
-			acceptStates.append(line.strip())
+			acceptStates.add(line.strip())
 
 determineAutomaton = dict(automaton)
+detAcceptStates = set(acceptStates)
 
 #if the input automaton is nondeterministic
 if len(nonDetWalks):
@@ -100,6 +104,14 @@ if len(nonDetWalks):
 	prettyPrint(keysMap)
 	print()
 
+	detAcceptStates = set()
+	#Get accepting states
+	for key in automaton:
+		if isinstance(key[0], frozenset):
+			for state in key[0]:
+				if state in acceptStates:
+					detAcceptStates.add(keysMap[key[0]])
+
 	determineAutomaton = {}
 	#Map values
 	for key in automaton:
@@ -110,6 +122,7 @@ if len(nonDetWalks):
 	        for e in automaton[key]:
 	            singleElement = e
 	        determineAutomaton[(keysMap[key[0]], key[1])] = keysMap[singleElement]
-
-print("Final determine automaton:")
-prettyPrintOrdered(determineAutomaton)
+	
+print("Final deterministic automaton:")
+prettyPrint(determineAutomaton)
+prettyPrintOrdered(determineAutomaton, detAcceptStates)
