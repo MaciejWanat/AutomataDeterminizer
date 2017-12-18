@@ -8,3 +8,5 @@ Files in project:
 * determinize.py - program that is determinizing automaton
 * nondet.in - example nondeterministic automaton
 * README.md - this file
+
+Note: automaton cannot contain epsilon transitions

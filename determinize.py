@@ -3,13 +3,13 @@
 import sys
 import collections
 
-determineAutomaton = {}
-automaton = {}
+detAutomaton = {}
+nonDetAutomaton = {}
 acceptStates = set()
 detAcceptStates = set()
 alphabet = set()
 foundState = True
-nonDetWalks = set()
+nonDetWalks = False
 
 def prettyPrint(dicto):
     print()
@@ -24,6 +24,12 @@ def prettyPrintOrdered(dicto, acceptStates):
     for state in acceptStates:
     	print(state)
 
+def printIter(dicto, i):
+	print('\n----------------\n')
+	print('Iteration ' + str(i))
+	prettyPrint(dicto)
+	print()
+
 #Read nondeterministic automaton ----
 for line in sys.stdin:
 	if line[0] != '#':
@@ -31,106 +37,111 @@ for line in sys.stdin:
 		if len(words) != 1:
 			pair = (words[0], words[2])
 			alphabet.add(words[2])
-			if pair in automaton:
-				automaton[pair].add(words[1])
+			if pair in nonDetAutomaton:
+				nonDetAutomaton[pair].add(words[1])
 				#used for detecting not needed single states
-				nonDetWalks.add(int(words[0]))
+				nonDetWalks = True
 			else:
-				automaton[pair] = set(words[1])
+				nonDetAutomaton[pair] = set(words[1])
 		else:
 			acceptStates.add(line.strip())
 
-determineAutomaton = dict(automaton)
 detAcceptStates = set(acceptStates)
 
+print('Input: ')
+prettyPrint(nonDetAutomaton)
+
 #if the input automaton is nondeterministic
-if len(nonDetWalks):
-	maxDet = min(nonDetWalks)	
+if nonDetWalks:
+
+	#initialize values for 0
+	for symbol in alphabet:
+		if ('0', symbol) in nonDetAutomaton:
+			detAutomaton[('0', symbol)] = nonDetAutomaton[('0', symbol)] 
+
+	#used because we cant iterate throught changing dictionary
+	detAutomatonCopy = dict(detAutomaton)
 	i = 0
-	#Determine into multistates----
-	#while you can find any unmapped multistate
+
 	while foundState == True:
-	    i = i + 1
-	    print('----------------')
-	    print('Iteration ' + str(i))
-	    prettyPrint(determineAutomaton)
-	    print()
-	    #iterate through 'automaton' and add new states to 'determineAutomaton'.
-	    #if you add anything, check if there is any new unmapped state.
-	    foundState = False
-	    automaton = dict(determineAutomaton)
-	    #for each state-symbol pair...
-	    for key in automaton:
-	        #check if it is a multistate (can get more than one state), and if it is
-	        if len(automaton[key]) > 1 and (frozenset(automaton[key]), key[-1]) not in automaton:
-	            print('Found multistate : ' + str(automaton[key]) + ". Adding to automaton...")
-	            foundState = True
-	            #for each symbol in alphabet...
-	            for symbol in alphabet:
-	                valueAutoma = set()
-	                #for each state in multstational state...
-	                for state in automaton[key]:
-	                    #add states you can get to from single state and current symbol, if the connection exists
-	                    if (state, symbol) in automaton:
-	                        valueAutoma.update(automaton[(state, symbol)])
-	                        
-	                keyAutoma = (frozenset(automaton[key]), symbol)	                
-	                determineAutomaton[keyAutoma] = valueAutoma
+		detAutomaton = dict(detAutomatonCopy)
 
-	#Delete empty walks
-	for key in automaton:
-		if not len(automaton[key]):
-			del determineAutomaton[key]
+		i = i + 1
+		printIter(detAutomaton, i)
 
-	automaton = determineAutomaton
-	#Delete no longer needed single states
-	for key in automaton:
-		if isinstance(key[0], str) and len(determineAutomaton[key]) == 1 and int(key[0]) > maxDet:
-			del determineAutomaton[key]
+		foundState = False
 
-	automaton = determineAutomaton
-	orderedSingleAutomaton = {}
+		for key in detAutomaton:
+			compareKey = key			
+			#if its a set, convert it into frozenset (which is hashable)	
+			if len(detAutomaton[key]) > 1:
+				compareKey = (frozenset(detAutomaton[key]),key[-1])
 
-	print("--------\n\nBefore map:")
-	prettyPrint(automaton)
+			if detAutomaton[key] and compareKey not in detAutomaton:
+
+				print('Found new key : ' + str(detAutomaton[key]) + ". Adding to automaton...")
+				foundState = True
+
+				for symbol in alphabet:
+					valueAutoma = set()
+					for state in detAutomaton[key]:						
+						if (state, symbol) in nonDetAutomaton:
+							valueAutoma.update(nonDetAutomaton[(state, symbol)])	
+						detAutomatonCopy[compareKey[0], symbol] = valueAutoma
+
+	#Delete empty states
+	toDel = set()
+
+	for key in detAutomaton:
+		if not len(detAutomaton[key]):
+			toDel.add(key)
+
+	for state in toDel:
+		del detAutomaton[state]
+
+	i = i + 1
+	printIter(detAutomaton, i)
 
 	#Create map
-	i = 0
 	keysMap = {}
 
-	#Map single states
-	while i <= maxDet:
-		keysMap[str(i)] = str(i)
-		i = i + 1
+	#Map starting state
+	keysMap['0'] = '0'
 
-	#Map multistates
-	for key in determineAutomaton:
+	i = 1
+	#Map lasting states
+	for key in detAutomaton:
 	    if key[0] not in keysMap:
 	        keysMap[key[0]] = str(i)
 	        i = i + 1
 
-	print("\n--------\n\nMap:")
+	print("--------\n\nMap:")
 	prettyPrint(keysMap)
-	print()
+	print()        
 
 	detAcceptStates = set()
-	#Get accepting states
-	for key in automaton:
-		if isinstance(key[0], frozenset):
-			for state in key[0]:
-				if state in acceptStates:
-					detAcceptStates.add(keysMap[key[0]])
 
-	determineAutomaton = {}
+	#Get accepting states
+	for key in detAutomaton:
+		for state in frozenset(key[0]):
+			if state in acceptStates:
+				detAcceptStates.add(keysMap[key[0]])
+
+	detAutomatonCopy = detAutomaton
+	detAutomaton = {}
+
 	#Map values
-	for key in automaton:
+	for key in detAutomatonCopy:
 	    #transfer value set into frozenset, if it is a set or into single element if it is a single element
-	    if len(automaton[key]) > 1:
-	        determineAutomaton[(keysMap[key[0]], key[1])] = keysMap[frozenset(automaton[key])]
+	    if len(detAutomatonCopy[key]) > 1:
+	        detAutomaton[(keysMap[key[0]], key[1])] = keysMap[frozenset(detAutomatonCopy[key])]
 	    else:
-	        for e in automaton[key]:
+	        for e in detAutomatonCopy[key]:
 	            singleElement = e
-	        determineAutomaton[(keysMap[key[0]], key[1])] = keysMap[singleElement]
+	        detAutomaton[(keysMap[key[0]], key[1])] = keysMap[singleElement]
 	
-print("\n--------\n\nFinal deterministic automaton:")
-prettyPrintOrdered(determineAutomaton, detAcceptStates)
+	print("--------\n\nFinal deterministic automaton:")
+	prettyPrintOrdered(detAutomaton, detAcceptStates)
+
+else:	
+	print("\nYour automaton is already deterministic!")
