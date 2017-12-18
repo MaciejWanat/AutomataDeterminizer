@@ -73,10 +73,16 @@ if len(nonDetWalks):
 	                    #add states you can get to from single state and current symbol, if the connection exists
 	                    if (state, symbol) in automaton:
 	                        valueAutoma.update(automaton[(state, symbol)])
-
-	                keyAutoma = (frozenset(automaton[key]), symbol)
+	                        
+	                keyAutoma = (frozenset(automaton[key]), symbol)	                
 	                determineAutomaton[keyAutoma] = valueAutoma
 
+	#Delete empty walks
+	for key in automaton:
+		if not len(automaton[key]):
+			del determineAutomaton[key]
+
+	automaton = determineAutomaton
 	#Delete no longer needed single states
 	for key in automaton:
 		if isinstance(key[0], str) and len(determineAutomaton[key]) == 1 and int(key[0]) > maxDet:
@@ -84,6 +90,9 @@ if len(nonDetWalks):
 
 	automaton = determineAutomaton
 	orderedSingleAutomaton = {}
+
+	print("--------\n\nBefore map:")
+	prettyPrint(automaton)
 
 	#Create map
 	i = 0
@@ -100,7 +109,7 @@ if len(nonDetWalks):
 	        keysMap[key[0]] = str(i)
 	        i = i + 1
 
-	print("--------\nMap:")
+	print("\n--------\n\nMap:")
 	prettyPrint(keysMap)
 	print()
 
@@ -123,6 +132,5 @@ if len(nonDetWalks):
 	            singleElement = e
 	        determineAutomaton[(keysMap[key[0]], key[1])] = keysMap[singleElement]
 	
-print("Final deterministic automaton:")
-prettyPrint(determineAutomaton)
+print("\n--------\n\nFinal deterministic automaton:")
 prettyPrintOrdered(determineAutomaton, detAcceptStates)
