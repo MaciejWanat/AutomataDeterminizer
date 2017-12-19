@@ -76,6 +76,8 @@ if nonDetWalks:
 			#if its a set, convert it into frozenset (which is hashable)	
 			if len(detAutomaton[key]) > 1:
 				compareKey = (frozenset(detAutomaton[key]),key[-1])
+			elif detAutomaton[key]:
+				compareKey = (next(iter(detAutomaton[key])), key[-1])				
 
 			if detAutomaton[key] and compareKey not in detAutomaton:
 
